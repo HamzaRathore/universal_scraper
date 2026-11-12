@@ -1,0 +1,101 @@
+"""CSS selector profiles for storefronts."""
+
+# Keep the registry active when switching profiles.
+SELECTOR_PROFILES = {}
+
+# SELECTOR_PROFILES["vinted"] = {
+#     "product_links": 'a[data-testid$="--overlay-link"][href*="/items/"]',
+#     "next_page": 'a[rel="next"], a[data-testid="pagination-arrow-right"]',
+#     "drop_product_query": {"referrer"},
+#     "derive_brand_identity": True,
+#     "metadata_fields": ("query", "brand", "gender", "category", "sub_category"),
+#     "fields": {
+#         "name": "h1",
+#         "price": '[data-testid="item-price"]',
+#         "description": '[itemprop="description"]',
+#         "condition": '[itemprop="status"]',
+#         "sub_brand": '[itemprop="brand"]',
+#         "sizes": '[itemprop="size"]',
+#         "colors": '[itemprop="color"]',
+#         "pictures": {
+#             "css": ('img.web_ui__Image__content[data-testid^="item-photo-"][data-testid$="--img"], '
+#                     '[data-testid="item-photos"] img.web_ui__Image__content, '
+#                     '.item-photos img.web_ui__Image__content, '
+#                     '.item-photos-thumbnails-container img.web_ui__Image__content'),
+#             "attr": "src",
+#             "contains": "/t/",
+#             "exclude": "310x430",
+#             "fallback": {"css": 'meta[property="og:image"]', "attr": "content",
+#                          "contains": "/t/", "exclude": "310x430"},
+#         },
+#         "currency": {"css": 'meta[itemprop="priceCurrency"], meta[property="product:price:currency"]', "attr": "content"},
+#     },
+# }
+
+# SELECTOR_PROFILES["khaadi"] = {
+#     "product_links": '.product-tile a[href*=".html"], [data-pid] a[href*=".html"]',
+#     "drop_product_query": {"source"},
+#     "derive_brand_identity": True,
+#     "metadata_fields": ("query", "brand", "gender", "category", "sub_category"),
+#     "fields": {
+#         "name": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "name"},
+#         "price": {"css": ".sales .cc-price[content]", "attr": "content"},
+#         "currency": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "offers.priceCurrency"},
+#         "description": {"css": 'meta[name="description"]', "attr": "content"},
+#         "pictures": {"css": 'meta[property="og:image"]', "attr": "content", "exclude": "Logo-OG"},
+#     },
+# }
+
+# SELECTOR_PROFILES["breakout"] = {
+#     "product_links": '.product-item a[href*="/products/"]',
+#     "derive_brand_identity": True,
+#     "metadata_fields": ("query", "brand", "gender", "category", "sub_category"),
+#     "fields": {
+#         "name": "h1",
+#         "p_id": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "sku"},
+#         "price": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "offers.price"},
+#         "currency": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "offers.priceCurrency"},
+#         "description": {"css": 'meta[property="og:description"]', "attr": "content"},
+#         "pictures": {"css": 'div.pointer-events-none > img.h-full.w-auto.object-contain[src]', "attr": "src"},
+#     },
+# }
+
+# SELECTOR_PROFILES["alexandermcqueen"] = {
+#     "product_links": 'a[href*="/pr/"][href*=".html"]',
+#     "derive_brand_identity": True,
+#     "metadata_fields": ("query", "brand", "gender", "category", "sub_category"),
+#     "fields": {
+#         "name": "h1",
+#         "price": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "offers.price"},
+#         "currency": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "offers.priceCurrency"},
+#         "description": {"css": 'meta[property="og:description"]', "attr": "content"},
+#         "pictures": {"css": 'meta[property="og:image"]', "attr": "content"},
+#     },
+# }
+
+# SELECTOR_PROFILES["lama"] = {
+#     "product_links": '.grid-product a[href^="/products/"]',
+#     "derive_brand_identity": True,
+#     "metadata_fields": ("query", "brand", "gender", "category", "sub_category"),
+#     "fields": {
+#         "name": "h1",
+#         "price": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "offers.price"},
+#         "currency": {"css": 'script[type="application/ld+json"]', "types": {"Product"}, "json_path": "offers.priceCurrency"},
+#         "description": {"css": 'meta[property="og:description"]', "attr": "content"},
+#         "pictures": {"css": 'meta[property="og:image"]', "attr": "content"},
+#     },
+# }
+
+SELECTOR_PROFILES["airbnb"] = {
+    "product_links": 'a[href*="/rooms/"]',
+    "structured_links": {"css": 'script[type="application/ld+json"]', "types": {"VacationRental"}},
+    "derive_brand_identity": True,
+    "metadata_fields": ("query", "brand", "gender", "category", "sub_category"),
+    "fields": {
+        "name": {"css": 'meta[property="og:description"]', "attr": "content"},
+        "description": {"css": 'meta[name="description"]', "attr": "content"},
+        "rating": {"css": 'script[type="application/ld+json"]', "types": {"VacationRental"}, "json_path": "aggregateRating.ratingValue"},
+        "total_rating": {"css": 'script[type="application/ld+json"]', "types": {"VacationRental"}, "json_path": "aggregateRating.ratingCount"},
+        "pictures": {"css": 'meta[property="og:image"]', "attr": "content"},
+    },
+}

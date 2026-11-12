@@ -11,7 +11,7 @@ class StorageError(Exception):
     """A MongoDB setup or write error safe to show in the terminal."""
 
 
-def connect(stack, *, optional=False):
+def connect(stack):
     try:
         from dotenv import dotenv_values
         from pymongo import MongoClient
@@ -21,8 +21,6 @@ def connect(stack, *, optional=False):
 
     settings = {**os.environ, **dotenv_values(Path(__file__).with_name(".env"))}
     uri = (settings.get("MONGODB_URI") or "").strip()
-    if optional and not uri:
-        return None
     database = (settings.get("MONGODB_DATABASE", "universal_scraper") or "").strip()
     collection = (settings.get("MONGODB_COLLECTION", "products") or "").strip()
     if not uri or not database or not collection:
@@ -39,7 +37,8 @@ def connect(stack, *, optional=False):
 def save_product(collection, record):
     from pymongo.errors import PyMongoError
 
-    identity = json.dumps([record["url"], record["sku"] or record["title"]], ensure_ascii=False)
+    identity = json.dumps([record["product_url"], record.get("p_id") or record.get("name") or record["product_url"]],
+                          ensure_ascii=False)
     key = sha256(identity.encode("utf-8")).hexdigest()
     now = datetime.now(timezone.utc)
     try:

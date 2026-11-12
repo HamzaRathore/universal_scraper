@@ -3,5 +3,4 @@ protego>=0.7,<1
 playwright>=1.50,<2
 pymongo>=4.10,<5
 python-dotenv>=1,<2
-psutil>=6,<8
 

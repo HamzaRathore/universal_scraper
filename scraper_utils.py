@@ -1,4 +1,4 @@
-"""Shared URL, robots policy, and data normalization helpers."""
+"""Shared URL, robots, and price helpers."""
 
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -7,24 +7,15 @@ from hashlib import sha256
 import json
 import os
 import re
-import ssl
 import sys
 from tempfile import NamedTemporaryFile
 from time import time
-from urllib.error import HTTPError
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 
 AGENT = "UniversalScraper"
 MAX_BODY = 12_000_000
 TRACKING_KEYS = {"gclid", "fbclid", "msclkid"}
-PRODUCT_PATHS = {"product", "products", "product-detail", "p", "dp", "item", "items", "pd"}
-PRODUCT_ID_SUFFIX = re.compile(r".+-p\d{6,}(?:\.html)?")
-PRODUCT_SHORT_ROUTE = re.compile(r".+-(?=[a-z0-9]*\d)[a-z0-9]{5,}\.html")
-CATEGORY_ID_SUFFIX = re.compile(r".+-l\d+\.html")
-PRODUCT_STYLE_ROUTE = re.compile(r"(?:/[a-z]{2}(?:-[a-z]{2})?){0,2}/t/[^/]+(?:/[^/]+)?/?")
-SHOP_PATHS = {"shop", "store", "collections", "category", "categories", "catalog"}
-SKIP_PATHS = {"cart", "checkout", "login", "account", "register", "wishlist", "search"}
 
 
 class ScopeError(ValueError):
@@ -45,26 +36,6 @@ def policy_delay(policy):
     rate = policy.request_rate(AGENT)
     rate_delay = rate.seconds / rate.requests if rate and rate.requests > 0 else 0
     return max(policy.crawl_delay(AGENT) or 0, rate_delay)
-
-
-def error_category(error, stage):
-    reason = getattr(error, "reason", error)
-    if isinstance(error, ScopeError):
-        return "REDIRECT_OUT_OF_SCOPE"
-    if isinstance(reason, ssl.SSLError):
-        return "TLS_ERROR"
-    if isinstance(reason, TimeoutError):
-        return "ROBOTS_TIMEOUT" if stage == "robots" else "HTTP_TIMEOUT"
-    if isinstance(error, HTTPError):
-        if error.code in {403, 429}:
-            return f"HTTP_{error.code}"
-        if 500 <= error.code < 600:
-            return "HTTP_5XX"
-    return "ROBOTS_ACCESS_UNKNOWN" if stage == "robots" else "HTTP_ERROR"
-
-
-def utc_now():
-    return datetime.now(timezone.utc).isoformat()
 
 
 def write_json(path, data):
@@ -134,8 +105,6 @@ def web_url(base, value, *, clean=False):
             params = parse_qsl(query, keep_blank_values=True)
             filtered = [(key, val) for key, val in params
                         if key.lower() not in TRACKING_KEYS and not key.lower().startswith("utm_")]
-            if url.path.lower().endswith(".html"):
-                filtered = [(key, val) for key, val in filtered if (key, val) != ("source", "plp")]
             if filtered != params:
                 query = urlencode(filtered)
         return urlunsplit((url.scheme, url.netloc.lower(), url.path or "/", query, ""))
@@ -145,100 +114,6 @@ def web_url(base, value, *, clean=False):
 
 def host(url):
     return urlsplit(url).netloc.removeprefix("www.")
-
-
-def tagged_url(base, target):
-    if target.startswith("?"):
-        parts = urlsplit(base)
-        extra = parse_qsl(target[1:], keep_blank_values=True)
-        keys = {key for key, _ in extra}
-        original = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)
-                    if key not in keys]
-        target = urlunsplit(parts._replace(query=urlencode(original + extra)))
-    url = web_url(base, target or base, clean=True)
-    if not url or host(url) != host(base):
-        raise ValueError(f"Tag target must stay on the configured storefront: {target}")
-    return url
-
-
-def room_url(url):
-    parts = urlsplit(url)
-    segments = parts.path.strip("/").split("/")
-    if len(segments) == 2 and segments[0] == "rooms" and segments[1].isdigit():
-        return urlunsplit((parts.scheme, parts.netloc, "/" + "/".join(segments), "", ""))
-    return None
-
-
-def same_page(left, right):
-    first_url, second_url = urlsplit(left), urlsplit(right)
-    if host(left) != host(right) or first_url.path.rstrip("/") != second_url.path.rstrip("/"):
-        return False
-    if first_url.path == "/browse/product.do":
-        return dict(parse_qsl(first_url.query)).get("pid") == dict(parse_qsl(second_url.query)).get("pid")
-    return True
-
-
-def priority(url):
-    path = urlsplit(url).path.lower()
-    parts = set(path.split("/"))
-    if parts & SKIP_PATHS or path.endswith((".pdf", ".zip", ".jpg", ".png", ".webp", ".svg", ".css", ".js")):
-        return None
-    segments = path.strip("/").split("/")
-    if path == "/browse/product.do" and dict(parse_qsl(urlsplit(url).query)).get("pid"):
-        return 1
-    if set(segments[:-1]) & PRODUCT_PATHS or room_url(url):
-        return 1
-    if (PRODUCT_ID_SUFFIX.fullmatch(segments[-1])
-            or (segments[-2:-1] == ["pr"] and PRODUCT_SHORT_ROUTE.fullmatch(segments[-1]))):
-        return 1
-    if PRODUCT_STYLE_ROUTE.fullmatch(path):
-        return 1
-    if parts & SHOP_PATHS or CATEGORY_ID_SUFFIX.fullmatch(segments[-1]):
-        return 2
-    return 3
-
-
-def values(value):
-    if value is None:
-        return []
-    return value if isinstance(value, list) else [value]
-
-
-def objects(value):
-    stack = [value]
-    while stack:
-        item = stack.pop()
-        if isinstance(item, dict):
-            yield item
-            stack.extend(reversed(list(item.values())))
-        elif isinstance(item, list):
-            stack.extend(reversed(item))
-
-
-def schema_type(value):
-    return str(value).rstrip("/").rsplit("/", 1)[-1].rsplit(":", 1)[-1]
-
-
-def scalar(value):
-    if isinstance(value, str):
-        return value.strip() or None
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return value
-    return None
-
-
-def first(*items):
-    return next((item for item in items if item is not None), None)
-
-
-def minor_price(value, exponent):
-    if type(exponent) is int and 0 <= exponent <= 6 and re.fullmatch(r"\d{1,20}", str(value)):
-        return str(Decimal(str(value)).scaleb(-exponent))
-    return None
-
-
-def stock(value):
-    return {True: "InStock", False: "OutOfStock"}.get(value) if isinstance(value, bool) else None
 
 
 def price_number(value):
