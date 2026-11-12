@@ -1,0 +1,11 @@
+.venv/
+.deps/
+.browsers/
+__pycache__/
+products.jsonl
+.env
+.robots-cache/
+.scrape-jobs/
+screenshots/
+sources/
+

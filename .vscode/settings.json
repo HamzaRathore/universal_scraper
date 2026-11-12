@@ -1,0 +1,14 @@
+{
+  "files.exclude": {
+    "**/.browsers": true,
+    "**/.deps": true,
+    "**/.venv": true,
+    "**/__pycache__": true
+  },
+  "search.exclude": {
+    "**/.browsers": true,
+    "**/.deps": true,
+    "**/.venv": true,
+    "**/__pycache__": true
+  }
+}
