@@ -14,7 +14,7 @@ from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_ope
 from db import save_product
 from scraper_utils import AGENT, MAX_BODY, RobotsCache, ScopeError, host, policy_delay, progress, retry_after, web_url
 from .browser import render
-from .extraction import listing_links, product_record, source_url
+from .extraction import listing_links, product_record, source_url, with_query
 
 
 class ScopedRedirect(HTTPRedirectHandler):
@@ -50,6 +50,7 @@ class StoreCrawler:
         self.last_request = {}
         self.adaptive_delay = {}
         self.seen = set()
+        self.discovered_links = set()
         self.stats = Counter()
         self.browser = None
         context = ssl.create_default_context()
@@ -173,6 +174,7 @@ class StoreCrawler:
     def scrape_source(self, source):
         url = source_url(self.target, source)
         selectors = self.target["selectors"]
+        detail_params = self.target.get("detail_params", {}) | source.get("detail_params", {})
         saved = 0
         visited = set()
         for page_number in range(1, self.options.max_pages + 1):
@@ -188,6 +190,7 @@ class StoreCrawler:
                 html = render(self, final, selectors["product_links"])
                 links, next_page = listing_links(html, final, selectors) if html else ([], None)
             self.stats["discovered"] += len(links)
+            self.discovered_links.update(links)
             progress(f"Listing {page_number}: found {len(links)} unique product links")
             for index, link in enumerate(links, 1):
                 if self.stats["rate_limited"] or saved == self.options.max_products:
@@ -195,17 +198,19 @@ class StoreCrawler:
                 if link in self.seen:
                     progress(f"Product {index}/{len(links)}: already saved, skipping {link}")
                     continue
-                progress(f"Product {index}/{len(links)}: fetching {link}")
-                final, html = self.read_page(link)
+                detail_url = with_query(link, detail_params)
+                progress(f"Product {index}/{len(links)}: fetching {detail_url}")
+                final, html = self.read_page(detail_url)
                 if html is None:
                     continue
-                record = product_record(html, final, self.target, source)
+                product_url = link if detail_params else final
+                record = product_record(html, product_url, self.target, source)
                 if not record and self.options.browser:
                     fields = selectors["fields"]
                     rule = fields.get("name") or next(iter(fields.values()))
                     wait = rule if isinstance(rule, str) else rule["css"]
                     html = render(self, final, wait)
-                    record = product_record(html, final, self.target, source) if html else None
+                    record = product_record(html, product_url, self.target, source) if html else None
                 if record:
                     if self.collection is not None:
                         save_product(self.collection, record)
@@ -225,7 +230,7 @@ class StoreCrawler:
     def run(self):
         sources = self.target.get("sources") or [{}]
         for index, source in enumerate(sources, 1):
-            label = source.get("q") or "default"
+            label = " / ".join(filter(None, (source.get("q"), source.get("l_subcategory")))) or "default"
             progress(f"Source {index}/{len(sources)}: {label}")
             before = self.stats["records"]
             self.scrape_source(source)
@@ -233,4 +238,5 @@ class StoreCrawler:
             if self.stats["rate_limited"]:
                 progress("Stopping remaining sources because the site rate limit was reached.")
                 break
+        self.stats["unique_discovered"] = len(self.discovered_links)
         return self.stats

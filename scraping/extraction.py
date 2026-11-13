@@ -21,6 +21,12 @@ def source_url(target, source):
     params = dict(source.get("params", {}))
     if target.get("query_param") and source.get("q"):
         params.setdefault(target["query_param"], source["q"])
+    return with_query(url, params)
+
+
+def with_query(url, params):
+    if not params:
+        return url
     parts = urlsplit(url)
     query = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)
              if key not in params]
@@ -127,6 +133,7 @@ def product_record(html, url, target, source):
         "query": source.get("q"), "brand": target.get("brand"), "brand_url": target.get("brand_url"),
         "gender": source.get("gender"), "category": source.get("l_category"),
         "sub_category": source.get("l_subcategory"),
+        "source_city": source.get("city"), "source_country": source.get("country"),
     }
     for key in selectors.get("metadata_fields", ()):
         if metadata.get(key) is not None:

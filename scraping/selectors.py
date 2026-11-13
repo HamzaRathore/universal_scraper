@@ -86,16 +86,23 @@ SELECTOR_PROFILES = {}
 #     },
 # }
 
+AIRBNB_RENTAL = {"css": 'script[type="application/ld+json"]', "types": {"VacationRental"}}
+
 SELECTOR_PROFILES["airbnb"] = {
     "product_links": 'a[href*="/rooms/"]',
-    "structured_links": {"css": 'script[type="application/ld+json"]', "types": {"VacationRental"}},
+    "structured_links": AIRBNB_RENTAL,
     "derive_brand_identity": True,
-    "metadata_fields": ("query", "brand", "gender", "category", "sub_category"),
+    "metadata_fields": ("query", "brand", "category", "sub_category", "source_city", "source_country"),
     "fields": {
-        "name": {"css": 'meta[property="og:description"]', "attr": "content"},
+        "name": {**AIRBNB_RENTAL, "json_path": "name",
+                 "fallback": {"css": 'meta[property="og:description"]', "attr": "content"}},
         "description": {"css": 'meta[name="description"]', "attr": "content"},
-        "rating": {"css": 'script[type="application/ld+json"]', "types": {"VacationRental"}, "json_path": "aggregateRating.ratingValue"},
-        "total_rating": {"css": 'script[type="application/ld+json"]', "types": {"VacationRental"}, "json_path": "aggregateRating.ratingCount"},
-        "pictures": {"css": 'meta[property="og:image"]', "attr": "content"},
+        "rating": {**AIRBNB_RENTAL, "json_path": "aggregateRating.ratingValue"},
+        "total_rating": {**AIRBNB_RENTAL, "json_path": "aggregateRating.ratingCount"},
+        "max_guests": {**AIRBNB_RENTAL, "json_path": "containsPlace.occupancy.value"},
+        "pictures": {**AIRBNB_RENTAL, "json_path": "image",
+                     "fallback": {"css": 'meta[property="og:image"]', "attr": "content"}},
+        "price": {**AIRBNB_RENTAL, "json_path": "offers.price"},
+        "currency": {**AIRBNB_RENTAL, "json_path": "offers.priceCurrency"},
     },
 }

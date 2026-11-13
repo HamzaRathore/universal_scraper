@@ -47,11 +47,63 @@ from scraping.selectors import SELECTOR_PROFILES
 #     "product_id_pattern": r"/products/([^/]+)$",
 #     "sources": [{"q": "Boots", "gender": "women", "l_category": "shoes", "l_subcategory": "boots"}],
 # }
+AIRBNB_CITIES = {
+    "Pakistan": {
+        "Islamabad": "islamabad-pakistan",
+        "Lahore": "lahore-pakistan",
+        "Karachi": "karachi-pakistan",
+        "Rawalpindi": "rawalpindi-pakistan",
+        "Murree": "murree-pakistan",
+    },
+    "United Arab Emirates": {
+        "Dubai": "dubai-united-arab-emirates",
+        "Abu Dhabi": "abu-dhabi-united-arab-emirates",
+        "Sharjah": "sharjah-united-arab-emirates",
+        "Ajman": "ajman-united-arab-emirates",
+        "Ras Al Khaimah": "ras-al-khaimah-united-arab-emirates",
+    },
+    "United Kingdom": {
+        "London": "london-united-kingdom",
+        "Manchester": "manchester-united-kingdom",
+        "Edinburgh": "edinburgh-united-kingdom",
+        "Birmingham": "birmingham-united-kingdom",
+        "Liverpool": "liverpool-united-kingdom",
+    },
+    "Türkiye": {
+        "Istanbul": "istanbul-turkiye",
+        "Antalya": "antalya-turkiye",
+        "Izmir": "izmir-turkiye",
+        "Bursa": "bursa-turkiye",
+        "Bodrum": "bodrum-turkiye",
+    },
+    "Canada": {
+        "Toronto": "toronto-canada",
+        "Vancouver": "vancouver-canada",
+        "Montreal": "montreal-canada",
+        "Calgary": "calgary-canada",
+        "Ottawa": "ottawa-canada",
+    },
+}
+
 TARGET = {
-    "url": "https://www.airbnb.com/homes",
+    "url": "https://www.airbnb.com/islamabad-pakistan/stays",
     "brand": "airbnb", "selector_profile": "airbnb",
     "product_id_pattern": r"/rooms/(\d+)",
-    "sources": [{"q": "Islamabad", "path": "/islamabad-pakistan/stays", "l_category": "stays"}],
+    "detail_params": {
+        "adults": 2, "currency": "USD",
+        # "check_in": "2026-11-20", "check_out": "2026-11-22",
+    },
+    "sources": [
+        {"q": city, "city": city, "country": country, "path": f"/{slug}/stays",
+         "l_category": "stays", "l_subcategory": "all stays"}
+        for country, cities in AIRBNB_CITIES.items()
+        for city, slug in cities.items()
+    ] + [
+        {"q": "Islamabad", "city": "Islamabad", "country": "Pakistan",
+         "path": f"/islamabad-pakistan/stays/{kind.replace(' ', '-')}",
+         "l_category": "stays", "l_subcategory": kind}
+        for kind in ("apartments", "houses", "villas", "hotels", "private suites")
+    ],
 }
 # TARGET = {
 #     "url": "https://www.vinted.co.uk/catalog/1231-shoes",

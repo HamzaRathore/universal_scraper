@@ -7,6 +7,7 @@ from urllib.error import HTTPError
 from universal_scraper import StoreCrawler
 from db import connect, save_product
 from scraping.extraction import listing_links, product_record, source_url
+from scraping.selectors import SELECTOR_PROFILES
 from types import SimpleNamespace
 
 
@@ -45,6 +46,37 @@ class ScraperTests(unittest.TestCase):
                   <a class="product" href="https://other.example/items/2">External</a>"""
         self.assertEqual(listing_links(html, self.target["url"], self.target["selectors"])[0],
                          ["https://shop.example/items/1?variant=2"])
+
+    def test_room_request_params_keep_listing_and_record_urls_stable(self):
+        self.target["detail_params"] = {"adults": 2, "currency": "USD"}
+        source = {**self.target["sources"][0], "detail_params": {"adults": 3}}
+        listing_url = source_url(self.target, source)
+        room_url = "https://shop.example/items/1?variant=2"
+        detail_url = f"{room_url}&adults=3&currency=USD"
+        crawler = StoreCrawler(self.target, self.options, self.stack, None, output := Mock())
+        crawler.read_page = Mock(side_effect=[
+            (listing_url, '<a class="product" href="/items/1?variant=2">One</a>'),
+            (detail_url, "<h1>One</h1>"),
+        ])
+        crawler.scrape_source(source)
+        self.assertEqual([call.args[0] for call in crawler.read_page.call_args_list],
+                         [listing_url, detail_url])
+        self.assertEqual(output.call_args.args[0]["product_url"], room_url)
+
+    def test_airbnb_gallery_and_optional_quote(self):
+        target = {"selectors": SELECTOR_PROFILES["airbnb"]}
+        url = "https://www.airbnb.com/rooms/123"
+        html = """<script type="application/ld+json">{"@type":"VacationRental",
+            "name":"Apartment","image":["/one.jpg","/two.jpg","/one.jpg"],
+            "containsPlace":{"occupancy":{"value":4}}%s}</script>"""
+        row = product_record(html % "", url, target, {"city": "Islamabad", "country": "Pakistan"})
+        self.assertEqual(row["pictures"], ["https://www.airbnb.com/one.jpg", "https://www.airbnb.com/two.jpg"])
+        self.assertEqual(row["max_guests"], "4")
+        self.assertEqual((row["source_city"], row["source_country"]), ("Islamabad", "Pakistan"))
+        self.assertNotIn("price", row)
+        self.assertNotIn("currency", row)
+        row = product_record(html % ',"offers":{"price":125.5,"priceCurrency":"USD"}', url, target, {})
+        self.assertEqual((row["price"], row["currency"]), (125.5, "USD"))
 
     def test_configured_json_ld_supports_listing_links_and_nested_fields(self):
         html = """
