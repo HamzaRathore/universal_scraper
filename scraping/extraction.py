@@ -55,8 +55,15 @@ def structured_nodes(soup, rule):
                 nodes.extend(reversed(node))
 
 
+def json_value(data, path):
+    for key in path.split("."):
+        if isinstance(data, list):
+            data = data[0] if data else None
+        data = data.get(key) if isinstance(data, dict) else None
+    return data
+
+
 def listing_links(html, url, selectors):
-    soup = BeautifulSoup(html, "html.parser")
     links = {}
     drop = selectors.get("drop_product_query", ())
 
@@ -71,6 +78,23 @@ def listing_links(html, url, selectors):
                 link = urlunsplit(parts._replace(query=urlencode(query)))
             links.setdefault(link, None)
 
+    if (rule := selectors.get("json_listing")) and html.lstrip().startswith("{"):
+        try:
+            data = json.loads(html)
+        except (ValueError, RecursionError):
+            return [], None
+        items = json_value(data, rule["items"])
+        if not isinstance(items, list):
+            return [], None
+        collect(item.get(rule["url"]) for item in items if isinstance(item, dict))
+        try:
+            page, size, total = (int(json_value(data, rule[key])) for key in ("page", "size", "total"))
+        except (TypeError, ValueError):
+            return list(links), None
+        next_url = with_query(url, {rule["page_param"]: page + 1}) if links and page > 0 and size > 0 and page * size < total else None
+        return list(links), next_url
+
+    soup = BeautifulSoup(html, "html.parser")
     collect(node.get("href") for node in soup.select(selectors["product_links"]))
     if not links and (structured := selectors.get("structured_links")):
         collect(node.get("url") for node in structured_nodes(soup, structured))
@@ -88,11 +112,7 @@ def read_field(soup, rule, field, url):
     if json_path := rule.get("json_path"):
         raw = []
         for node in structured_nodes(soup, rule):
-            value = node
-            for key in json_path.split("."):
-                if isinstance(value, list):
-                    value = value[0] if value else None
-                value = value.get(key) if isinstance(value, dict) else None
+            value = json_value(node, json_path)
             if value is not None:
                 raw = value if isinstance(value, list) else [value]
                 break
@@ -107,6 +127,11 @@ def read_field(soup, rule, field, url):
         if (rule.get("contains") and rule["contains"] not in value
                 or rule.get("exclude") and rule["exclude"] in value):
             continue
+        if pattern := rule.get("pattern"):
+            match = re.search(pattern, value)
+            if not match:
+                continue
+            value = match.group(1)
         value = web_url(url, value) if rule.get("url", field in URL_FIELDS) else value.strip()
         if value and value not in values:
             values.append(value)

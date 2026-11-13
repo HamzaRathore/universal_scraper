@@ -86,6 +86,44 @@ SELECTOR_PROFILES = {}
 #     },
 # }
 
+DARAZ_PRODUCT = {"css": 'script[type="application/ld+json"]', "types": {"Product"}}
+
+SELECTOR_PROFILES["daraz"] = {
+    "product_links": '[data-qa-locator="product-item"] a[href*="/products/"][href*=".html"]',
+    "json_listing": {
+        "items": "mods.listItems", "url": "itemUrl",
+        "page": "mainInfo.page", "size": "mainInfo.pageSize",
+        "total": "mainInfo.totalResults", "page_param": "page",
+    },
+    "next_page": 'a[rel="next"]',
+    "derive_brand_identity": True,
+    "metadata_fields": ("query", "brand", "category"),
+    "fields": {
+        "name": {**DARAZ_PRODUCT, "json_path": "name"},
+        "description": {**DARAZ_PRODUCT, "json_path": "description"},
+        "sub_brand": {**DARAZ_PRODUCT, "json_path": "brand.name"},
+        "price": {"css": ".pdp-mod-price-v2-new-price", "pattern": r"Rs\.\s*([\d,]+(?:\.\d{1,2})?)",
+                  "fallback": {**DARAZ_PRODUCT, "json_path": "offers.price", "fallback": {
+                      "css": "script", "pattern": r'"pdt_price\\?":\\?"Rs\.\s*([\d,]+(?:\.\d{1,2})?)',
+                  }}},
+        "currency": {**DARAZ_PRODUCT, "json_path": "offers.priceCurrency"},
+        "currency_sign": {
+            "css": "script", "pattern": r'"pdt_price\\?":\\?"(Rs\.)\s*[\d,]+',
+        },
+        "category": {**DARAZ_PRODUCT, "json_path": "category"},
+        "pictures": {
+            "css": 'figure[itemprop="associatedMedia"] img[itemprop="contentUrl"][src]',
+            "attr": "src",
+            "fallback": {
+                "css": "img.item-gallery__thumbnail-image[src]", "attr": "src",
+                "fallback": {**DARAZ_PRODUCT, "json_path": "image"},
+            },
+        },
+        "rating": {**DARAZ_PRODUCT, "json_path": "aggregateRating.ratingValue"},
+        "total_rating": {**DARAZ_PRODUCT, "json_path": "aggregateRating.ratingCount"},
+    },
+}
+
 AIRBNB_RENTAL = {"css": 'script[type="application/ld+json"]', "types": {"VacationRental"}}
 
 SELECTOR_PROFILES["airbnb"] = {

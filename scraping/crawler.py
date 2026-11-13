@@ -4,6 +4,7 @@ from collections import Counter
 import gzip
 from http.client import IncompleteRead
 from io import BytesIO
+from itertools import count
 from random import uniform
 import ssl
 from time import monotonic, sleep
@@ -177,11 +178,15 @@ class StoreCrawler:
         detail_params = self.target.get("detail_params", {}) | source.get("detail_params", {})
         saved = 0
         visited = set()
-        for page_number in range(1, self.options.max_pages + 1):
+        page_limit = self.options.max_pages
+        for page_number in count(1):
+            if page_limit is not None and page_number > page_limit:
+                break
             if not url or url in visited:
                 break
             visited.add(url)
-            progress(f"Listing {page_number}/{self.options.max_pages}: fetching {url}")
+            page_label = f"{page_number}/{page_limit}" if page_limit is not None else str(page_number)
+            progress(f"Listing {page_label}: fetching {url}")
             final, html = self.read_page(url)
             if html is None:
                 break

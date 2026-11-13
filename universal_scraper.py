@@ -22,7 +22,7 @@ from scraping.extraction import source_url
 from scraping.selectors import SELECTOR_PROFILES
 
 
-# Enable only one TARGET and uncomment its profile in scraping/selectors.py.
+# Enable one TARGET and ensure its profile is registered in scraping/selectors.py.
 # TARGET = {
 #     "url": "https://pk.khaadi.com/ready-to-wear/chapter-2/kurta-/",
 #     "brand": "khaadi", "selector_profile": "khaadi",
@@ -47,64 +47,64 @@ from scraping.selectors import SELECTOR_PROFILES
 #     "product_id_pattern": r"/products/([^/]+)$",
 #     "sources": [{"q": "Boots", "gender": "women", "l_category": "shoes", "l_subcategory": "boots"}],
 # }
-AIRBNB_CITIES = {
-    "Pakistan": {
-        "Islamabad": "islamabad-pakistan",
-        "Lahore": "lahore-pakistan",
-        "Karachi": "karachi-pakistan",
-        "Rawalpindi": "rawalpindi-pakistan",
-        "Murree": "murree-pakistan",
-    },
-    "United Arab Emirates": {
-        "Dubai": "dubai-united-arab-emirates",
-        "Abu Dhabi": "abu-dhabi-united-arab-emirates",
-        "Sharjah": "sharjah-united-arab-emirates",
-        "Ajman": "ajman-united-arab-emirates",
-        "Ras Al Khaimah": "ras-al-khaimah-united-arab-emirates",
-    },
-    "United Kingdom": {
-        "London": "london-united-kingdom",
-        "Manchester": "manchester-united-kingdom",
-        "Edinburgh": "edinburgh-united-kingdom",
-        "Birmingham": "birmingham-united-kingdom",
-        "Liverpool": "liverpool-united-kingdom",
-    },
-    "Türkiye": {
-        "Istanbul": "istanbul-turkiye",
-        "Antalya": "antalya-turkiye",
-        "Izmir": "izmir-turkiye",
-        "Bursa": "bursa-turkiye",
-        "Bodrum": "bodrum-turkiye",
-    },
-    "Canada": {
-        "Toronto": "toronto-canada",
-        "Vancouver": "vancouver-canada",
-        "Montreal": "montreal-canada",
-        "Calgary": "calgary-canada",
-        "Ottawa": "ottawa-canada",
-    },
-}
+# AIRBNB_CITIES = {
+#     "Pakistan": {
+#         "Islamabad": "islamabad-pakistan",
+#         "Lahore": "lahore-pakistan",
+#         "Karachi": "karachi-pakistan",
+#         "Rawalpindi": "rawalpindi-pakistan",
+#         "Murree": "murree-pakistan",
+#     },
+#     "United Arab Emirates": {
+#         "Dubai": "dubai-united-arab-emirates",
+#         "Abu Dhabi": "abu-dhabi-united-arab-emirates",
+#         "Sharjah": "sharjah-united-arab-emirates",
+#         "Ajman": "ajman-united-arab-emirates",
+#         "Ras Al Khaimah": "ras-al-khaimah-united-arab-emirates",
+#     },
+#     "United Kingdom": {
+#         "London": "london-united-kingdom",
+#         "Manchester": "manchester-united-kingdom",
+#         "Edinburgh": "edinburgh-united-kingdom",
+#         "Birmingham": "birmingham-united-kingdom",
+#         "Liverpool": "liverpool-united-kingdom",
+#     },
+#     "Türkiye": {
+#         "Istanbul": "istanbul-turkiye",
+#         "Antalya": "antalya-turkiye",
+#         "Izmir": "izmir-turkiye",
+#         "Bursa": "bursa-turkiye",
+#         "Bodrum": "bodrum-turkiye",
+#     },
+#     "Canada": {
+#         "Toronto": "toronto-canada",
+#         "Vancouver": "vancouver-canada",
+#         "Montreal": "montreal-canada",
+#         "Calgary": "calgary-canada",
+#         "Ottawa": "ottawa-canada",
+#     },
+# }
 
-TARGET = {
-    "url": "https://www.airbnb.com/islamabad-pakistan/stays",
-    "brand": "airbnb", "selector_profile": "airbnb",
-    "product_id_pattern": r"/rooms/(\d+)",
-    "detail_params": {
-        "adults": 2, "currency": "USD",
-        # "check_in": "2026-11-20", "check_out": "2026-11-22",
-    },
-    "sources": [
-        {"q": city, "city": city, "country": country, "path": f"/{slug}/stays",
-         "l_category": "stays", "l_subcategory": "all stays"}
-        for country, cities in AIRBNB_CITIES.items()
-        for city, slug in cities.items()
-    ] + [
-        {"q": "Islamabad", "city": "Islamabad", "country": "Pakistan",
-         "path": f"/islamabad-pakistan/stays/{kind.replace(' ', '-')}",
-         "l_category": "stays", "l_subcategory": kind}
-        for kind in ("apartments", "houses", "villas", "hotels", "private suites")
-    ],
-}
+# AIRBNB_TARGET = {
+#     "url": "https://www.airbnb.com/islamabad-pakistan/stays",
+#     "brand": "airbnb", "selector_profile": "airbnb",
+#     "product_id_pattern": r"/rooms/(\d+)",
+#     "detail_params": {
+#         "adults": 2, "currency": "USD",
+#         # "check_in": "2026-11-20", "check_out": "2026-11-22",
+#     },
+#     "sources": [
+#         {"q": city, "city": city, "country": country, "path": f"/{slug}/stays",
+#          "l_category": "stays", "l_subcategory": "all stays"}
+#         for country, cities in AIRBNB_CITIES.items()
+#         for city, slug in cities.items()
+#     ] + [
+#         {"q": "Islamabad", "city": "Islamabad", "country": "Pakistan",
+#          "path": f"/islamabad-pakistan/stays/{kind.replace(' ', '-')}",
+#          "l_category": "stays", "l_subcategory": kind}
+#         for kind in ("apartments", "houses", "villas", "hotels", "private suites")
+#     ],
+# }
 # TARGET = {
 #     "url": "https://www.vinted.co.uk/catalog/1231-shoes",
 #     "brand": "vinted",
@@ -118,7 +118,18 @@ TARGET = {
 #     ],
 #     "selector_profile": "vinted",
 # }
-MAX_PAGES = 1
+TARGET = {
+    "url": "https://www.daraz.pk/chocolates/",
+    "brand": "daraz", "selector_profile": "daraz",
+    "query_param": "q",
+    "product_id_pattern": r"-i(\d+)(?:-s\d+)?\.html$",
+    "sources": [
+        {"q": query, "params": {"ajax": "true"}, "l_category": "chocolates"}
+        for query in ("kellogs coco pops", "ferrero rocher", "cadbury dairy milk", "kitkat", "lindt chocolate")
+    ],
+}
+# TARGET = AIRBNB_TARGET
+MAX_PAGES = None if TARGET["selector_profile"] == "daraz" else 1
 
 
 
@@ -126,7 +137,7 @@ def main():
     import soupsieve
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--max-pages", type=int, default=MAX_PAGES)
+    parser.add_argument("--max-pages", type=int, default=MAX_PAGES, help="Limit listing pages per query")
     parser.add_argument("--max-products", type=int, help="Limit saved products per source")
     parser.add_argument("--delay", type=float, default=4)
     parser.add_argument("--timeout", type=float, default=20)
@@ -137,7 +148,8 @@ def main():
     options = parser.parse_args()
     options.robots_cache = PROJECT_DIR / ".robots-cache"
     options.ca_bundle = os.getenv("SCRAPER_CA_BUNDLE")
-    if (options.max_pages < 1 or (options.max_products is not None and options.max_products < 1)
+    if ((options.max_pages is not None and options.max_pages < 1)
+            or (options.max_products is not None and options.max_products < 1)
             or not 0 <= options.delay < float("inf") or not 0 < options.timeout < float("inf")
             or not 0 <= options.retries <= 5 or not 0 <= options.max_retry_wait < float("inf")):
         parser.error("Check crawl limits, delay, timeout and retry settings.")

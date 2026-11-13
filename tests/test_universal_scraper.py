@@ -1,5 +1,6 @@
 from contextlib import ExitStack
 from email.message import Message
+import json
 import unittest
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError
@@ -77,6 +78,18 @@ class ScraperTests(unittest.TestCase):
         self.assertNotIn("currency", row)
         row = product_record(html % ',"offers":{"price":125.5,"priceCurrency":"USD"}', url, target, {})
         self.assertEqual((row["price"], row["currency"]), (125.5, "USD"))
+
+    def test_daraz_json_listing_preserves_filters_on_next_page(self):
+        url = "https://www.daraz.pk/chocolates/?ajax=true&q=kellogs+coco+pops"
+        item = "//www.daraz.pk/products/cocoa-i833397345.html"
+        data = {"mods": {"listItems": [{"itemUrl": item}, {"itemUrl": item}, {"itemUrl": "//other.example/"}]},
+                "mainInfo": {"page": "1", "pageSize": "40", "totalResults": "93"}}
+        profile = SELECTOR_PROFILES["daraz"]
+        links, next_url = listing_links(json.dumps(data), url, profile)
+        self.assertEqual(links, ["https:" + item])
+        self.assertEqual(next_url, url + "&page=2")
+        data["mainInfo"]["page"] = "3"
+        self.assertIsNone(listing_links(json.dumps(data), url, profile)[1])
 
     def test_configured_json_ld_supports_listing_links_and_nested_fields(self):
         html = """
