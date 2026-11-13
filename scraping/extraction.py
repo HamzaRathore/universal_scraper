@@ -63,20 +63,20 @@ def json_value(data, path):
     return data
 
 
-def listing_links(html, url, selectors):
+def listing_links(html, url, selectors, offers=None):
     links = {}
     drop = selectors.get("drop_product_query", ())
 
-    def collect(values):
-        for value in values:
-            link = web_url(url, value, clean=True)
-            if not link or host(link) != host(url):
-                continue
-            if drop:
-                parts = urlsplit(link)
-                query = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True) if key not in drop]
-                link = urlunsplit(parts._replace(query=urlencode(query)))
-            links.setdefault(link, None)
+    def collect(value):
+        link = web_url(url, value, clean=True)
+        if not link or host(link) != host(url):
+            return None
+        if drop:
+            parts = urlsplit(link)
+            query = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True) if key not in drop]
+            link = urlunsplit(parts._replace(query=urlencode(query)))
+        links.setdefault(link, None)
+        return link
 
     if (rule := selectors.get("json_listing")) and html.lstrip().startswith("{"):
         try:
@@ -86,7 +86,20 @@ def listing_links(html, url, selectors):
         items = json_value(data, rule["items"])
         if not isinstance(items, list):
             return [], None
-        collect(item.get(rule["url"]) for item in items if isinstance(item, dict))
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            link = collect(item.get(rule["url"]))
+            if not link or offers is None or not (fields := rule.get("offer")):
+                continue
+            price = price_number(item.get(fields["price"]))
+            original = price_number(item.get(fields["orignal_price"]))
+            discount = re.fullmatch(r"(-?\d+(?:\.\d+)?)\s*%\s*(?:off)?",
+                                    str(item.get(fields["discount_percentage"], "")).strip(), re.I)
+            percent = price_number(discount[1].lstrip("-")) if discount else None
+            if price is not None and original is not None and 0 <= price < original and percent is not None:
+                offers[link] = {"price": price, "orignal_price": original,
+                                "discount_percentage": percent}
         try:
             page, size, total = (int(json_value(data, rule[key])) for key in ("page", "size", "total"))
         except (TypeError, ValueError):
@@ -95,9 +108,11 @@ def listing_links(html, url, selectors):
         return list(links), next_url
 
     soup = BeautifulSoup(html, "html.parser")
-    collect(node.get("href") for node in soup.select(selectors["product_links"]))
+    for node in soup.select(selectors["product_links"]):
+        collect(node.get("href"))
     if not links and (structured := selectors.get("structured_links")):
-        collect(node.get("url") for node in structured_nodes(soup, structured))
+        for node in structured_nodes(soup, structured):
+            collect(node.get("url"))
     selector = selectors.get("next_page")
     next_link = soup.select_one(selector) if selector else None
     next_url = web_url(url, next_link.get("href"), clean=True) if next_link else None
@@ -178,7 +193,7 @@ def product_record(html, url, target, source):
             record.setdefault("currency_sign", symbol.group())
         if "currency" in fields and (currency := {"£": "GBP", "€": "EUR"}.get(symbol.group())):
             record.setdefault("currency", currency)
-    for field in ("price", "orignal_price", "rating", "total_rating"):
+    for field in ("price", "orignal_price", "discount_percentage", "rating", "total_rating"):
         if isinstance(value := record.get(field), str):
             if field in {"price", "orignal_price"}:
                 value = re.sub(r"^\s*(?:[A-Z]{3}|[£€$¥])\s*|\s*(?:[A-Z]{3}|[£€$¥])\s*$", "", value)

@@ -118,18 +118,34 @@ from scraping.selectors import SELECTOR_PROFILES
 #     ],
 #     "selector_profile": "vinted",
 # }
-TARGET = {
-    "url": "https://www.daraz.pk/chocolates/",
-    "brand": "daraz", "selector_profile": "daraz",
-    "query_param": "q",
-    "product_id_pattern": r"-i(\d+)(?:-s\d+)?\.html$",
+# DARAZ_TARGET = {
+#     "url": "https://www.daraz.pk/chocolates/",
+#     "brand": "daraz", "selector_profile": "daraz",
+#     "max_pages": None,
+#     "query_param": "q",
+#     "product_id_pattern": r"-i(\d+)(?:-s\d+)?\.html$",
+#     "sources": [
+#         {"q": query, "params": {"ajax": "true"}, "l_category": "chocolates"}
+#         for query in ("kellogs coco pops", "ferrero rocher", "cadbury dairy milk", "kitkat", "lindt chocolate")
+#     ],
+# }
+OLX_TARGET = {
+    "url": "https://www.olx.com.pk",
+    "brand": "olx", "selector_profile": "olx",
+    "product_id_pattern": r"-iid-(\d+)/?$",
     "sources": [
-        {"q": query, "params": {"ajax": "true"}, "l_category": "chocolates"}
-        for query in ("kellogs coco pops", "ferrero rocher", "cadbury dairy milk", "kitkat", "lindt chocolate")
+        {"q": "mobiles", "path": "/mobiles_c1411", "l_category": "mobiles"},
+        {"q": "vehicles", "path": "/vehicles_c5", "l_category": "vehicles"},
+        {"q": "Lahore mobiles", "path": "/lahore_g4060673/mobiles_c1411",
+         "city": "Lahore", "l_category": "mobiles"},
+        {"q": "iphone", "path": "/lahore_g4060673/mobiles_c1411/q-iphone",
+         "city": "Lahore", "l_category": "mobiles"},
     ],
 }
+TARGET = OLX_TARGET
+# TARGET = DARAZ_TARGET
 # TARGET = AIRBNB_TARGET
-MAX_PAGES = None if TARGET["selector_profile"] == "daraz" else 1
+MAX_PAGES = TARGET.get("max_pages", 1)
 
 
 

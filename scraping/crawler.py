@@ -190,10 +190,11 @@ class StoreCrawler:
             final, html = self.read_page(url)
             if html is None:
                 break
-            links, next_page = listing_links(html, final, selectors)
+            offers = {}
+            links, next_page = listing_links(html, final, selectors, offers)
             if not links and self.options.browser:
                 html = render(self, final, selectors["product_links"])
-                links, next_page = listing_links(html, final, selectors) if html else ([], None)
+                links, next_page = listing_links(html, final, selectors, offers) if html else ([], None)
             self.stats["discovered"] += len(links)
             self.discovered_links.update(links)
             progress(f"Listing {page_number}: found {len(links)} unique product links")
@@ -217,6 +218,7 @@ class StoreCrawler:
                     html = render(self, final, wait)
                     record = product_record(html, product_url, self.target, source) if html else None
                 if record:
+                    record.update(offers.get(link, {}))
                     if self.collection is not None:
                         save_product(self.collection, record)
                         progress(f"Saved to MongoDB: {record.get('name', record['product_url'])}")

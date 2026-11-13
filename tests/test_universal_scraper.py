@@ -85,8 +85,11 @@ class ScraperTests(unittest.TestCase):
         data = {"mods": {"listItems": [{"itemUrl": item}, {"itemUrl": item}, {"itemUrl": "//other.example/"}]},
                 "mainInfo": {"page": "1", "pageSize": "40", "totalResults": "93"}}
         profile = SELECTOR_PROFILES["daraz"]
-        links, next_url = listing_links(json.dumps(data), url, profile)
+        data["mods"]["listItems"][0].update(price="395.01", originalPrice="399", discount="1% Off")
+        offers = {}
+        links, next_url = listing_links(json.dumps(data), url, profile, offers)
         self.assertEqual(links, ["https:" + item])
+        self.assertEqual(offers[links[0]], {"price": 395.01, "orignal_price": 399, "discount_percentage": 1})
         self.assertEqual(next_url, url + "&page=2")
         data["mainInfo"]["page"] = "3"
         self.assertIsNone(listing_links(json.dumps(data), url, profile)[1])
